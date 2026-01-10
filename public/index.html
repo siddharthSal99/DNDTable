@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>D&D Table</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="tool-group">
+                <button id="pen-tool" class="tool-btn active" title="Pen">✏️</button>
+                <button id="eraser-tool" class="tool-btn" title="Eraser">🧹</button>
+                <button id="clear-btn" class="tool-btn" title="Clear">🗑️</button>
+                <label for="draw-color" class="color-label" title="Drawing Color">
+                    <input type="color" id="draw-color" value="#000000">
+                </label>
+            </div>
+            
+            <div class="tool-group">
+                <label for="grid-size">Grid:</label>
+                <input type="number" id="grid-size" min="20" max="200" value="50" step="10">
+                <button id="grid-toggle" class="tool-btn active" title="Toggle Grid">⊞</button>
+            </div>
+            
+            <div class="tool-group">
+                <label for="background-upload" class="upload-btn">📷 Map</label>
+                <input type="file" id="background-upload" accept="image/jpeg,image/png" style="display: none;">
+                <button id="clear-background" class="tool-btn" title="Clear Map">🗑️ Map</button>
+            </div>
+            
+            <div class="tool-group">
+                <button id="add-token-btn" class="tool-btn" title="Add Token">➕ Token</button>
+            </div>
+            
+            <div class="tool-group">
+                <button id="character-sheet-toggle" class="tool-btn" title="Character Sheets">📄</button>
+            </div>
+        </div>
+        
+        <!-- Main board area -->
+        <div class="board-container">
+            <canvas id="board-canvas"></canvas>
+        </div>
+        
+        <!-- Character Sheet Panel -->
+        <div id="character-sheet-panel" class="character-sheet-panel hidden">
+            <div class="panel-header">
+                <h2>Character Sheets</h2>
+                <button id="close-sheet-panel" class="close-btn">×</button>
+            </div>
+            <div class="panel-content">
+                <div class="upload-section">
+                    <label for="sheet-upload" class="upload-btn-large">Upload Character Sheet (PDF/Image)</label>
+                    <input type="file" id="sheet-upload" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;">
+                </div>
+                <div id="sheets-list" class="sheets-list"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Token Creation Modal -->
+    <div id="token-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Create Token</h3>
+            <label>
+                Name:
+                <input type="text" id="token-name" placeholder="Character Name" value="Token">
+            </label>
+            <label>
+                Color:
+                <input type="color" id="token-color" value="#3498db">
+            </label>
+            <div class="modal-buttons">
+                <button id="token-create-btn">Create</button>
+                <button id="token-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
+

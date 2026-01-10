@@ -1,0 +1,19 @@
+{
+  "name": "dnd-table",
+  "version": "1.0.0",
+  "description": "Private self-hosted D&D session web app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["dnd", "dungeons-and-dragons", "webapp"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "cookie-parser": "^1.4.6",
+    "bcrypt": "^5.1.1"
+  }
+}
+

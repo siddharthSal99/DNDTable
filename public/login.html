@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>D&D Table - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* Ensure body doesn't prevent input interaction on iOS */
+            -webkit-user-select: text;
+            user-select: text;
+            touch-action: manipulation;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-user-select: text;
+            user-select: text;
+            touch-action: manipulation;
+            /* iOS Safari fix - ensure input is interactive */
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            position: relative;
+            z-index: 10;
+            /* Ensure input is clickable on iOS */
+            -webkit-touch-callout: default;
+            cursor: text;
+        }
+        
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        
+        /* Ensure form group doesn't block input */
+        .form-group {
+            position: relative;
+            z-index: 1;
+        }
+        
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            color: #e74c3c;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>D&D Table</h1>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required>
+                <div class="error" id="error-message">Invalid password</div>
+            </div>
+            <button type="submit">Enter</button>
+        </form>
+    </div>
+    
+    <script>
+        const passwordInput = document.getElementById('password');
+        const formGroup = document.querySelector('.form-group');
+        
+        // iOS Safari fix - explicitly handle touch events on input
+        passwordInput.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+            this.focus();
+        }, { passive: true });
+        
+        passwordInput.addEventListener('touchend', function(e) {
+            e.stopPropagation();
+            this.focus();
+        }, { passive: true });
+        
+        passwordInput.addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.focus();
+        });
+        
+        // Also handle clicks on the label
+        document.querySelector('label[for="password"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            passwordInput.focus();
+        });
+        
+        // Ensure input is focusable on page load (but don't auto-focus on iOS)
+        window.addEventListener('load', () => {
+            // Only auto-focus on non-touch devices
+            if (!('ontouchstart' in window)) {
+                setTimeout(() => {
+                    passwordInput.focus();
+                }, 100);
+            }
+        });
+        
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('error-message');
+            const button = e.target.querySelector('button');
+            
+            button.disabled = true;
+            errorEl.classList.remove('show');
+            
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    errorEl.classList.add('show');
+                    button.disabled = false;
+                }
+            } catch (error) {
+                errorEl.classList.add('show');
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
+
