@@ -14,6 +14,9 @@ const PORT = process.env.PORT || 3000;
 const PASSWORD_HASH = process.env.PASSWORD_HASH || null; // Set via environment variable, or use default "password"
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dnd-session-secret-change-me';
 
+// Trust proxy (required for ngrok and other reverse proxies)
+app.set('trust proxy', true);
+
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
@@ -52,7 +55,12 @@ app.post('/login', async (req, res) => {
   if (isValid) {
     const sessionId = Math.random().toString(36).substring(7);
     sessions.add(sessionId);
-    res.cookie('session', sessionId, { httpOnly: true, maxAge: 86400000 }); // 24 hours
+    res.cookie('session', sessionId, { 
+      httpOnly: true, 
+      maxAge: 86400000, // 24 hours
+      secure: req.secure || req.headers['x-forwarded-proto'] === 'https', // Secure cookies over HTTPS
+      sameSite: 'lax'
+    });
     res.json({ success: true });
   } else {
     res.status(401).json({ success: false, error: 'Invalid password' });

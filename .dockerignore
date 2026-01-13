@@ -1,0 +1,15 @@
+node_modules/
+npm-debug.log
+.git/
+.gitignore
+.env
+*.log
+.DS_Store
+README.md
+DEPLOYMENT.md
+requirements.md
+start-with-ngrok.bat
+start-with-ngrok.sh
+start-with-cloudflare.sh
+generate-password-hash.js
+

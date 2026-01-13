@@ -4,7 +4,8 @@
   "description": "Private self-hosted D&D session web app",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "generate-password": "node generate-password-hash.js"
   },
   "keywords": ["dnd", "dungeons-and-dragons", "webapp"],
   "author": "",

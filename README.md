@@ -15,6 +15,78 @@ A private, self-hosted web application for casual D&D sessions with friends. Fea
 
 ## Installation
 
+### Option 1: Docker (Recommended - Platform Independent)
+
+**Prerequisites:**
+- [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/) installed
+
+**Quick Start:**
+
+1. **Set up ngrok (REQUIRED for internet access):**
+   - Sign up for a free account at [ngrok.com](https://ngrok.com) (takes 30 seconds)
+   - Get your authtoken from the [ngrok dashboard](https://dashboard.ngrok.com/get-started/your-authtoken)
+   - Create a `.env` file in the project root:
+     ```bash
+     NGROK_AUTHTOKEN=your_ngrok_authtoken_here
+     PASSWORD_HASH=your_password_hash_here  # Optional, but HIGHLY RECOMMENDED for internet access
+     ```
+   - **Note**: Without `NGROK_AUTHTOKEN`, ngrok will not work and you'll only have local network access
+
+2. **Build and start the containers:**
+   ```bash
+   docker-compose up --build
+   ```
+
+3. **Access the application:**
+   - **Local access**: `http://localhost:3000`
+   - **Public Internet URL**: 
+     - Open `http://localhost:4040` in your browser to access the ngrok web interface
+     - Look for the "Forwarding" section - you'll see a public HTTPS URL like `https://abc123.ngrok-free.app`
+     - **This is the URL you can share with anyone on the internet!** They don't need to be on your network.
+     - Alternatively, check the logs: `docker-compose logs ngrok` to see the public URL in the console
+
+**Docker Commands:**
+- Start in background: `docker-compose up -d`
+- View logs: `docker-compose logs -f`
+- View ngrok logs (to see public URL): `docker-compose logs -f ngrok`
+- Stop: `docker-compose down`
+- Rebuild after changes: `docker-compose up --build`
+
+**Getting Your Public Internet URL:**
+Once the containers are running, ngrok creates a public **HTTPS** URL that **anyone on the internet can access**:
+1. **Web Interface** (Easiest): Open `http://localhost:4040` in your browser and look for the "Forwarding" section
+   - You'll see a URL like: `https://abc123.ngrok-free.app` (note the **https://** prefix)
+   - **Important**: Always use the HTTPS URL, not HTTP
+2. **Logs**: Run `docker-compose logs ngrok` and look for a line like `Forwarding https://xxxx.ngrok-free.app -> http://app:3000`
+3. Share this **HTTPS** URL with your friends - they can access your D&D Table from anywhere in the world!
+
+**Note**: ngrok automatically provides HTTPS encryption. The URL will always start with `https://` - make sure you're using the HTTPS URL, not trying to access via HTTP.
+
+**⚠️ Security Warning**: Since this exposes your app to the entire internet, make sure to:
+- Set a strong password using `PASSWORD_HASH` in your `.env` file
+- Only share the URL with trusted friends
+- Stop the containers when not in use (`docker-compose down`)
+
+**Troubleshooting SSL Errors:**
+If you see `ERR_SSL_PROTOCOL_ERROR` when accessing the ngrok URL:
+1. **Verify your ngrok authtoken is set**: Check that `NGROK_AUTHTOKEN` is in your `.env` file and is valid
+2. **Check ngrok logs**: Run `docker-compose logs ngrok` to see if there are any errors
+3. **Wait for app to be ready**: The app container has a healthcheck - make sure it's healthy before accessing: `docker-compose ps`
+4. **Restart containers**: Try `docker-compose down && docker-compose up --build`
+5. **Verify the URL**: Make sure you're using the HTTPS URL from ngrok (starts with `https://`), not HTTP
+
+**Running without ngrok (local network only):**
+If you only need local network access and don't want ngrok, you can run just the app:
+```bash
+docker-compose -f docker-compose.no-ngrok.yml up --build
+```
+Or start only the app service from the main compose file:
+```bash
+docker-compose up app --build
+```
+
+### Option 2: Native Installation
+
 1. Install dependencies:
 ```bash
 npm install
@@ -29,7 +101,9 @@ npm start
 
 ## Network Access (Sharing with Friends)
 
-To allow others on your local network to access the app:
+### Local Network Access
+
+To allow others on your **local network** (same Wi-Fi) to access the app:
 
 1. **Start the server** - When you run `npm start`, the server will display your network IP address in the console output.
 
@@ -43,15 +117,41 @@ To allow others on your local network to access the app:
    - **Mac**: System Settings → Network → Firewall → Options → Allow incoming connections for Node
    - **Linux**: Configure your firewall to allow port 3000 (e.g., `sudo ufw allow 3000`)
 
-4. **Important Notes**:
-   - All players must be on the same local network (same Wi-Fi/router)
-   - The server must remain running on your computer
-   - If your IP address changes, you'll need to share the new address
-   - For internet access (not just local network), you'll need port forwarding or a service like ngrok
+### Internet Access (Friends Outside Your Network)
+
+To allow friends who are **not on your local network** to access the app, see **[DEPLOYMENT.md](DEPLOYMENT.md)** for detailed instructions.
+
+**Quick Start Options:**
+- **ngrok** (Recommended): `ngrok http 3000` - Easiest, automatic HTTPS
+- **Cloudflare Tunnel**: `cloudflared tunnel --url http://localhost:3000` - Free, no account needed
+- **Port Forwarding**: Advanced, requires router access
+
+**⚠️ Security**: Before exposing your app online, make sure to set a strong password using the `PASSWORD_HASH` environment variable!
 
 ## Default Password
 
-The default password is `password`. To change it, set the `PASSWORD_HASH` environment variable with a bcrypt hash of your desired password.
+The default password is `password`. 
+
+**⚠️ Important**: Before exposing your app to the internet, set a strong password!
+
+### Setting a Custom Password
+
+1. **Generate a password hash:**
+   ```bash
+   npm run generate-password
+   ```
+   Or run directly:
+   ```bash
+   node generate-password-hash.js
+   ```
+
+2. **Set the environment variable:**
+   - **Docker**: Add `PASSWORD_HASH=your_hash_here` to your `.env` file
+   - **Windows (PowerShell):** `$env:PASSWORD_HASH="your_hash_here"`
+   - **Windows (CMD):** `set PASSWORD_HASH=your_hash_here`
+   - **Mac/Linux:** `export PASSWORD_HASH="your_hash_here"`
+
+3. **Start the server** with the environment variable set.
 
 ## Usage
 
@@ -71,6 +171,12 @@ The default password is `password`. To change it, set the `PASSWORD_HASH` enviro
 
 ## Requirements
 
+### Docker Installation
+- Docker and Docker Compose
+- ngrok account (for internet access via Docker setup)
+- Modern browser with WebSocket and IndexedDB support
+
+### Native Installation
 - Node.js 14+ 
 - Modern browser with WebSocket and IndexedDB support
 

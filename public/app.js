@@ -291,10 +291,10 @@ document.getElementById('token-create-btn').addEventListener('click', () => {
     let x = canvas.width / 2;
     let y = canvas.height / 2;
     
-    // Snap to grid center if enabled (grid squares are centered at gridSize intervals)
+    // Snap to grid square center if enabled
     if (boardState.gridVisible) {
-        x = Math.round(x / boardState.gridSize) * boardState.gridSize;
-        y = Math.round(y / boardState.gridSize) * boardState.gridSize;
+        x = Math.round(x / boardState.gridSize) * boardState.gridSize + boardState.gridSize / 2;
+        y = Math.round(y / boardState.gridSize) * boardState.gridSize + boardState.gridSize / 2;
     }
     
     const token = {
@@ -388,28 +388,44 @@ function makeTokenDraggable(element, token) {
     let isDragging = false;
     let offsetX = 0;
     let offsetY = 0;
+    const trashcan = document.getElementById('trashcan');
     
     const startDrag = (e) => {
         isDragging = true;
+        e.preventDefault();
+        e.stopPropagation();
         const tokenSize = getTokenSize();
-        const rect = element.getBoundingClientRect();
         const boardRect = canvas.getBoundingClientRect();
-        // Calculate offset from center of token
+        // Get current token center position (token.x and token.y are grid square centers)
+        const currentCenterX = token.x;
+        const currentCenterY = token.y;
+        
+        // Show trashcan
+        trashcan.classList.remove('hidden');
+        
+        // Calculate offset from mouse/touch position to token center
         if (e.touches) {
-            offsetX = e.touches[0].clientX - (rect.left + tokenSize / 2) - boardRect.left;
-            offsetY = e.touches[0].clientY - (rect.top + tokenSize / 2) - boardRect.top;
+            const touchX = e.touches[0].clientX - boardRect.left;
+            const touchY = e.touches[0].clientY - boardRect.top;
+            offsetX = touchX - currentCenterX;
+            offsetY = touchY - currentCenterY;
         } else {
-            offsetX = e.clientX - (rect.left + tokenSize / 2) - boardRect.left;
-            offsetY = e.clientY - (rect.top + tokenSize / 2) - boardRect.top;
+            const mouseX = e.clientX - boardRect.left;
+            const mouseY = e.clientY - boardRect.top;
+            offsetX = mouseX - currentCenterX;
+            offsetY = mouseY - currentCenterY;
         }
     };
     
     const drag = (e) => {
         if (!isDragging) return;
+        e.preventDefault();
+        e.stopPropagation();
         const tokenSize = getTokenSize();
         const boardRect = canvas.getBoundingClientRect();
         let x, y;
-        // Calculate position based on center of token
+        
+        // Calculate new token center position based on mouse/touch position minus offset
         if (e.touches) {
             x = e.touches[0].clientX - boardRect.left - offsetX;
             y = e.touches[0].clientY - boardRect.top - offsetY;
@@ -418,27 +434,70 @@ function makeTokenDraggable(element, token) {
             y = e.clientY - boardRect.top - offsetY;
         }
         
-        // Snap to grid center if enabled
+        // Snap to grid square center if enabled
         if (boardState.gridVisible) {
-            // Snap to grid center
-            x = Math.round(x / boardState.gridSize) * boardState.gridSize;
-            y = Math.round(y / boardState.gridSize) * boardState.gridSize;
+            // Snap to center of grid squares (not intersections)
+            x = Math.round((x - boardState.gridSize / 2) / boardState.gridSize) * boardState.gridSize + boardState.gridSize / 2;
+            y = Math.round((y - boardState.gridSize / 2) / boardState.gridSize) * boardState.gridSize + boardState.gridSize / 2;
         }
         
-        // Position element so token center aligns with grid center
+        // Position element so token center aligns with grid square center
         element.style.left = (x - tokenSize / 2) + 'px';
         element.style.top = (y - tokenSize / 2) + 'px';
         
-        // Store grid center position in token
+        // Store grid square center position in token
         token.x = x;
         token.y = y;
         
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'token-move', id: token.id, x, y }));
+        // Check if token is over trashcan
+        const trashcanRect = trashcan.getBoundingClientRect();
+        const tokenRect = element.getBoundingClientRect();
+        const isOverTrashcan = !(
+            tokenRect.right < trashcanRect.left ||
+            tokenRect.left > trashcanRect.right ||
+            tokenRect.bottom < trashcanRect.top ||
+            tokenRect.top > trashcanRect.bottom
+        );
+        
+        // Update trashcan appearance based on hover
+        if (isOverTrashcan) {
+            trashcan.classList.add('active');
+        } else {
+            trashcan.classList.remove('active');
         }
     };
     
-    const stopDrag = () => {
+    const stopDrag = (e) => {
+        if (!isDragging) return;
+        
+        // Check if token was dropped on trashcan
+        const trashcanRect = trashcan.getBoundingClientRect();
+        const tokenRect = element.getBoundingClientRect();
+        const isOverTrashcan = !(
+            tokenRect.right < trashcanRect.left ||
+            tokenRect.left > trashcanRect.right ||
+            tokenRect.bottom < trashcanRect.top ||
+            tokenRect.top > trashcanRect.bottom
+        );
+        
+        // Hide trashcan
+        trashcan.classList.add('hidden');
+        trashcan.classList.remove('active');
+        
+        if (isOverTrashcan) {
+            // Delete the token
+            boardState.tokens = boardState.tokens.filter(t => t.id !== token.id);
+            element.remove();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'token-delete', id: token.id }));
+            }
+        } else {
+            // Normal drop - send move message if position changed
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'token-move', id: token.id, x: token.x, y: token.y }));
+            }
+        }
+        
         isDragging = false;
     };
     
