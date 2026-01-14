@@ -1,6 +1,8 @@
-// Canvas setup
+// Canvas setup - two canvases: background (grid/map) and drawing (pen/eraser)
 const canvas = document.getElementById('board-canvas');
 const ctx = canvas.getContext('2d');
+const drawingCanvas = document.getElementById('drawing-canvas');
+const drawingCtx = drawingCanvas.getContext('2d');
 
 // Board state (must be declared before functions that use it)
 let boardState = {
@@ -10,6 +12,9 @@ let boardState = {
     gridVisible: true,
     drawings: []
 };
+
+// User role (admin or general)
+let userRole = null;
 
 // Drawing state
 let isDrawing = false;
@@ -21,8 +26,12 @@ let currentPath = [];
 
 // Set canvas size
 function resizeCanvas() {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+    canvas.width = width;
+    canvas.height = height;
+    drawingCanvas.width = width;
+    drawingCanvas.height = height;
     redraw();
 }
 resizeCanvas();
@@ -58,6 +67,10 @@ function handleWebSocketMessage(data) {
     switch (data.type) {
         case 'state':
             boardState = data.data;
+            if (data.role) {
+                userRole = data.role;
+                updateUIForRole();
+            }
             redraw();
             renderTokens();
             break;
@@ -115,9 +128,26 @@ function handleWebSocketMessage(data) {
     }
 }
 
+// Update UI based on user role
+function updateUIForRole() {
+    const isAdmin = userRole === 'admin';
+    
+    // Admin-only controls: grid size, grid toggle, background upload, clear background
+    const gridSizeGroup = document.querySelector('.tool-group:nth-child(2)');
+    const backgroundGroup = document.querySelector('.tool-group:nth-child(3)');
+    
+    if (gridSizeGroup) {
+        gridSizeGroup.style.display = isAdmin ? 'flex' : 'none';
+    }
+    if (backgroundGroup) {
+        backgroundGroup.style.display = isAdmin ? 'flex' : 'none';
+    }
+}
+
 // Drawing functions
 function getEventPos(e) {
-    const rect = canvas.getBoundingClientRect();
+    // Use drawing canvas for position calculation (they're the same size)
+    const rect = drawingCanvas.getBoundingClientRect();
     if (e.touches) {
         return {
             x: e.touches[0].clientX - rect.left,
@@ -150,17 +180,32 @@ function draw(e) {
     const pos = getEventPos(e);
     currentPath.points.push({ x: pos.x, y: pos.y });
     
-    // Draw locally
-    ctx.globalCompositeOperation = currentTool === 'eraser' ? 'destination-out' : 'source-over';
-    ctx.lineWidth = currentTool === 'eraser' ? 20 : 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = currentTool === 'eraser' ? 'rgba(0,0,0,1)' : drawColor;
-    
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
+    // Draw on the drawing canvas (not the background canvas)
+    if (currentTool === 'eraser') {
+        // Eraser uses destination-out on drawing canvas only
+        drawingCtx.globalCompositeOperation = 'destination-out';
+        drawingCtx.lineWidth = 20;
+        drawingCtx.lineCap = 'round';
+        drawingCtx.lineJoin = 'round';
+        drawingCtx.strokeStyle = 'rgba(0,0,0,1)';
+        
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(lastX, lastY);
+        drawingCtx.lineTo(pos.x, pos.y);
+        drawingCtx.stroke();
+    } else {
+        // Draw pen normally with live preview on drawing canvas
+        drawingCtx.globalCompositeOperation = 'source-over';
+        drawingCtx.lineWidth = 3;
+        drawingCtx.lineCap = 'round';
+        drawingCtx.lineJoin = 'round';
+        drawingCtx.strokeStyle = drawColor;
+        
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(lastX, lastY);
+        drawingCtx.lineTo(pos.x, pos.y);
+        drawingCtx.stroke();
+    }
     
     lastX = pos.x;
     lastY = pos.y;
@@ -178,21 +223,21 @@ function stopDrawing(e) {
     isDrawing = false;
 }
 
-// Canvas event listeners
-canvas.addEventListener('mousedown', startDrawing);
-canvas.addEventListener('mousemove', draw);
-canvas.addEventListener('mouseup', stopDrawing);
-canvas.addEventListener('mouseleave', stopDrawing);
+// Canvas event listeners - attach to drawing canvas (top layer)
+drawingCanvas.addEventListener('mousedown', startDrawing);
+drawingCanvas.addEventListener('mousemove', draw);
+drawingCanvas.addEventListener('mouseup', stopDrawing);
+drawingCanvas.addEventListener('mouseleave', stopDrawing);
 
-canvas.addEventListener('touchstart', (e) => {
+drawingCanvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
     startDrawing(e);
 });
-canvas.addEventListener('touchmove', (e) => {
+drawingCanvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
     draw(e);
 });
-canvas.addEventListener('touchend', (e) => {
+drawingCanvas.addEventListener('touchend', (e) => {
     e.preventDefault();
     stopDrawing(e);
 });
@@ -529,7 +574,7 @@ function renderTokens() {
     });
 }
 
-// Drawing rendering
+// Drawing rendering - draw on the drawing canvas
 function drawPath(path) {
     // Handle both old format (array of points) and new format (object with points array)
     let points, tool, color;
@@ -547,36 +592,55 @@ function drawPath(path) {
     
     if (points.length < 2) return;
     
-    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
-    ctx.lineWidth = tool === 'eraser' ? 20 : 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = tool === 'eraser' ? 'rgba(0,0,0,1)' : color;
+    // Draw on drawing canvas, not background canvas
+    drawingCtx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    drawingCtx.lineWidth = tool === 'eraser' ? 20 : 3;
+    drawingCtx.lineCap = 'round';
+    drawingCtx.lineJoin = 'round';
+    drawingCtx.strokeStyle = tool === 'eraser' ? 'rgba(0,0,0,1)' : color;
     
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
+    drawingCtx.beginPath();
+    drawingCtx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
+        drawingCtx.lineTo(points[i].x, points[i].y);
     }
-    ctx.stroke();
+    drawingCtx.stroke();
 }
 
 function redraw() {
+    // Clear and redraw background canvas (grid and map)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw background image
+    // Draw background image on background canvas
     if (boardState.backgroundImage) {
         const img = new Image();
         img.onload = () => {
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             drawGrid();
-            boardState.drawings.forEach(path => drawPath(path));
         };
         img.src = boardState.backgroundImage;
     } else {
         drawGrid();
-        boardState.drawings.forEach(path => drawPath(path));
     }
+    
+    // Clear and redraw drawing canvas (pen and eraser strokes)
+    drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    
+    // Draw all paths on drawing canvas (pen first, then eraser)
+    // Pen paths
+    boardState.drawings.forEach(path => {
+        const tool = Array.isArray(path) ? (path[0]?.tool || 'pen') : (path.tool || 'pen');
+        if (tool === 'pen') {
+            drawPath(path);
+        }
+    });
+    // Eraser paths (will erase pen drawings above)
+    boardState.drawings.forEach(path => {
+        const tool = Array.isArray(path) ? (path[0]?.tool || 'pen') : (path.tool || 'pen');
+        if (tool === 'eraser') {
+            drawPath(path);
+        }
+    });
 }
 
 function drawGrid() {
@@ -745,5 +809,14 @@ document.getElementById('sheet-upload').addEventListener('change', async (e) => 
 // Initialize
 initDB().then(() => {
     console.log('IndexedDB initialized');
+});
+
+// Check for stored role on page load (in case WebSocket hasn't connected yet)
+window.addEventListener('load', () => {
+    const storedRole = sessionStorage.getItem('userRole');
+    if (storedRole) {
+        userRole = storedRole;
+        updateUIForRole();
+    }
 });
 

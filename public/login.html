@@ -127,7 +127,11 @@
         <form id="login-form">
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" required>
+                <input type="password" id="password" required placeholder="Enter admin or general password">
+                <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                    Use <strong>admin</strong> password for full access<br>
+                    Use <strong>general</strong> password for player access
+                </div>
                 <div class="error" id="error-message">Invalid password</div>
             </div>
             <button type="submit">Enter</button>
@@ -189,6 +193,10 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    // Store role in sessionStorage for reference
+                    if (data.role) {
+                        sessionStorage.setItem('userRole', data.role);
+                    }
                     window.location.href = '/';
                 } else {
                     errorEl.classList.add('show');
